@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: scraper/Dockerfile
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/database
+    # command: sh -c "pip install requests psycopg2-binary && cron && tail -f /dev/null"
+
+  db:
+    image: postgres:16.2
+    restart: always
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: database
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  db_data:

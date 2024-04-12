@@ -1,1 +1,1 @@
-My project for the technical test
+This project gets files online, store its in a postgreSQL database, and provides some visualizations.
