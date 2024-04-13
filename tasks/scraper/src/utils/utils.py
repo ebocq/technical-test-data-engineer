@@ -12,6 +12,7 @@ def get_csv_file(url):
     DataFrame: the data in the csv file"""
     
     response = requests.get(url)
+    response.encoding = 'utf-8'
     csv_data = response.text
     csv_file_like_object = StringIO(csv_data)
     df = pd.read_csv(csv_file_like_object)

@@ -4,12 +4,11 @@ services:
   scraper:
     build:
       context: .
-      dockerfile: scraper/Dockerfile
+      dockerfile: tasks/scraper/Dockerfile
     depends_on:
       - db
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/database
-    # command: sh -c "pip install requests psycopg2-binary && cron && tail -f /dev/null"
 
   db:
     image: postgres:16.2
@@ -19,7 +18,31 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: database
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - data:/var/lib/postgresql/data
+
+  visualization:
+    build:
+      context: .
+      dockerfile: tasks/visualization/Dockerfile
+    ports:
+      - "8501:8501"
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://user:password@db:5432/database
+
+  # notebook:
+  #   image: jupyter/scipy-notebook
+  #   ports:
+  #     - "8888:8888"
+  #   volumes:
+  #     - data:/notebook
+  #   depends_on:
+  #     - db
+  #   environment:
+  #     - JUPYTER_TOKEN=mysecretpassword
+  #     - DATABASE_URL=postgresql://user:password@db:5432/database
+
 
 volumes:
-  db_data:
+  data:

@@ -16,4 +16,14 @@ engine = create_engine(os.environ['DATABASE_URL'])
 df_zones.to_sql('zones', con=engine, if_exists='replace', index=False)
 df_arretes.to_sql('arretes', con=engine, if_exists='replace', index=False)
 
-engine.close()
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Generate some example data
+data = sns.load_dataset("iris")
+
+# Create a Seaborn chart
+sns.pairplot(data, hue="species")
+
+# Show the chart
+plt.show()

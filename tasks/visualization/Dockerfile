@@ -5,13 +5,13 @@ FROM python:3.12
 WORKDIR /app
 
 # Copy requirements file
-COPY scraper/requirements.txt .
+COPY tasks/visualization/requirements.txt .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the scraper code
-COPY scraper/src src
+# Copy the visualization code
+COPY tasks/visualization/src src
 
 # Command to run the application
-CMD [ "python", "src/scraper.py" ]
+CMD ["streamlit", "run", "src/visualization.py"]
