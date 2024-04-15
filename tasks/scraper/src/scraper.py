@@ -1,8 +1,19 @@
 import os
-import subprocess
 from flask import Flask, jsonify
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, MetaData
 from .utils.utils import get_csv_file
+
+def tables_exist():
+    engine = create_engine(os.environ['DATABASE_URL'])
+    # Create a MetaData object
+    metadata = MetaData()
+
+    # Reflect the tables in the database
+    metadata.reflect(bind=engine)
+
+    # Check if the 'zones' table exists in the database
+    return 'zones' in metadata.tables and 'arretes' in metadata.tables
+
 
 app = Flask(__name__)
 
@@ -19,7 +30,7 @@ def scrape_data():
         # Connect to PostgreSQL
         engine = create_engine(os.environ['DATABASE_URL'])
 
-        # Create tables if not exists
+        # Create tables if not exists, replace otherwise
         df_zones.to_sql('zones', con=engine, if_exists='replace', index=False)
         df_arretes.to_sql('arretes', con=engine, if_exists='replace', index=False)
 
@@ -29,8 +40,10 @@ def scrape_data():
         # If an exception occurs during scraping, return an error message
         return jsonify({"error": "An error occurred during scraping: " + str(e)}), 500
 
-# if __name__ == '__main__':
-#     # Run the Flask app
-#     # app.run(host='0.0.0.0', port=5001, debug=True)
-#     cmd = 'gunicorn -w 1 -b 0.0.0.0:5001 scraper:app'
-#     subprocess.run(cmd, shell=True)
+if __name__ == '__main__':
+    # scrape data if tables have not been created
+    if not tables_exist():
+        print("tables doesn't exist")
+        scrape_data()
+    else:
+        print("tables exist")
