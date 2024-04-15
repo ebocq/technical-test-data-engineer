@@ -41,8 +41,11 @@ def prep_data():
 
     df_arretes_essentials_columns = ['id_zone', 'debut_validite_arrete', 'fin_validite_arrete', 'numero_niveau',
         'nom_niveau', 'statut_arrete']
-
-    return df_zones[df_zones_essentials_columns].merge(df_arretes[df_arretes_essentials_columns], how='inner', on='id_zone')
+    
+    df =  df_zones[df_zones_essentials_columns].merge(df_arretes[df_arretes_essentials_columns], how='inner', on='id_zone')
+    df['Duration'] = df['fin_validite_arrete'] - df['debut_validite_arrete'] + pd.Timedelta(days=1)
+    
+    return df
 
 def tables_exist():
     engine = create_engine(os.environ['DATABASE_URL'])
@@ -66,6 +69,7 @@ def load_data():
             
     st.session_state.df = prep_data()
     st.session_state.initialized = True  # Set initialized flag to True
+    st.write("Initialisation terminée")
 
 def df_at_date(df, date_to_consider):
     return df[(df['debut_validite_arrete'] <= date_to_consider) & (date_to_consider <= df['fin_validite_arrete'])]
@@ -77,7 +81,7 @@ def plot_nb_dep_per_alert(df, date_to_consider, cmap, norm):
     df_nb_dep_per_alert = df_max_alert_per_dep.groupby(by=['numero_niveau', 'nom_niveau']).agg({'code_departement': 'count'}).rename(columns={'code_departement': 'nb_departements'}).reset_index()
     df_sorted = df_nb_dep_per_alert.sort_values('numero_niveau', ascending=False)
 
-    st.title(f"Nombre de départements par niveau d'alerte au {date_to_consider}")
+    st.title(f"1.   &Nombre de départements par niveau d'alerte au {date_to_consider}")
     fig, ax = plt.subplots()
     df_sorted.plot(kind='bar', x='nom_niveau', y='nb_departements', color=cmap(norm(df_sorted['numero_niveau'])), legend=False, ax=ax)
 
@@ -94,17 +98,33 @@ def plot_repart_restriction(df, date_to_consider, cmap, norm, grouping='departem
     df_max_alert_per_grouping = df_date.sort_values('numero_niveau', ascending=False).drop_duplicates(prefix + grouping, keep='first')
     df_sorted = df_max_alert_per_grouping.sort_values('nom_' + grouping, ascending=True)
 
-    st.title(f"Niveau d'alerte par {grouping} au {date_to_consider}")
+    st.title(f"2. Niveau d'alerte par {grouping} au {date_to_consider}")
     fig, ax = plt.subplots()
     df_sorted.plot(kind='bar', x='nom_' + grouping, y='numero_niveau', color=cmap(norm(df_sorted['numero_niveau'])), legend=False, ax=ax)
 
     plt.xticks(rotation=45)
     st.pyplot(fig)
 
-def plot_data(df):
+def plot_duration_evolution(df, nom_zone, cmap, norm):
+    df_zone = df[df['nom_zone'] == nom_zone]    
+    # st.bar_chart(df_zone.set_index('nom_niveau')[['debut_validite_arrete', 'Duration']])
+    
+    # # Plot horizontal bars for each period
+    fig, ax = plt.subplots()
+    ax.barh(y=df_zone['nom_niveau'], width=df_zone['Duration'], left=df_zone['debut_validite_arrete']
+             , edgecolor='black', color=cmap(norm(df_zone['numero_niveau'])), height=0.2)
 
+    # for bar in bars:
+    #     width = bar.get_width()
+    #     ax.text(width, bar.get_y() + bar.get_height()/2, f'{width}', va='center', ha='left')
+    plt.xlabel('Date')
+    plt.ylabel(f"Type d'alerte")
+    plt.title("Périodes d'application des arrêtés")
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
+    
+def plot_surface_evolution(df):
     df_sup = df[df['type_zone'] == 'SUP']
-
     df_sup['days_list'] = df_sup.apply(lambda row: list(pd.date_range(start=row['debut_validite_arrete'], end=row['fin_validite_arrete'], freq='D')), axis=1)
 
     # Explode the date ranges into separate rows
@@ -112,15 +132,16 @@ def plot_data(df):
 
     # Reset the index
     df_days.reset_index(drop=True, inplace=True)
-
     df_superficie_grav = df_days.groupby(['day', 'nom_niveau', 'numero_niveau']).agg({'surface_zone': 'sum'}).reset_index()
 
-    st.title('Surface Zone by Day and Nom Niveau')
-    # Plot line chart for each nom_niveau
-    for nom_niveau in df_superficie_grav['nom_niveau'].unique():
-        st.subheader(f"Nom Niveau: {nom_niveau}")
-        subset = df_superficie_grav[df_superficie_grav['nom_niveau'] == nom_niveau]
-        st.line_chart(subset.set_index('day')['surface_zone'])
+    st.title("4. Evolution de la superficie française concernée par des niveaux de gravité (pour les eaux superficielles uniquement)")
+    sns.set_style("whitegrid")
+    fig, ax = plt.subplots()
+    sns.lineplot(data=df_superficie_grav, x='day', y='surface_zone', hue='nom_niveau', ax=ax) #, marker='o')
+    plt.xlabel('Date')
+    plt.ylabel('Superficie')
+    plt.xticks(rotation=45)
+    st.pyplot(fig)
     
 def main():
     st.title("Visualisation des données")
@@ -157,13 +178,23 @@ def main():
 
     cmap = plt.get_cmap('Reds')
     norm = plt.Normalize(0, 5)
+    
     # Display data on Streamlit web app
+    
+    # 1st plot
     plot_nb_dep_per_alert(st.session_state.df, date_to_consider=selected_date, cmap=cmap, norm=norm)
 
+    # 2nd plot
     plot_repart_restriction(st.session_state.df, date_to_consider=selected_date, cmap=cmap, norm=norm, grouping='departement')
 
-    # st.title('Dashboard: Zones Data')
-    # plot_data(df)
+    # 3rd plot
+    st.title('3. Durée des arrêtés au cours du temps')
+    selected_nom_zone = st.selectbox('Sélectionnez une zone:', sorted(st.session_state.df['nom_zone'].unique()), index=0)
+    # selected_noms_zones = st.multiselect('Select nom_zone:', sorted(st.session_state.df['nom_zone'].unique()))
+    plot_duration_evolution(st.session_state.df, nom_zone=selected_nom_zone, cmap=cmap, norm=norm)
+    
+    # 4th plot
+    plot_surface_evolution(st.session_state.df)
 
 if __name__ == "__main__":
     main()
