@@ -4,9 +4,10 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, MetaData
 from datetime import datetime
 
+SCRAPER_URL = "http://scraper:5001/scrape"
 
 def fetch_data(table_name):
     # Connect to PostgreSQL database
@@ -43,8 +44,26 @@ def prep_data():
 
     return df_zones[df_zones_essentials_columns].merge(df_arretes[df_arretes_essentials_columns], how='inner', on='id_zone')
 
+def tables_exist():
+    engine = create_engine(os.environ['DATABASE_URL'])
+    # Create a MetaData object
+    metadata = MetaData()
+
+    # Reflect the tables in the database
+    metadata.reflect(bind=engine)
+
+    # Check if the 'zones' table exists in the database
+    return 'zones' in metadata.tables and 'arretes' in metadata.tables
+
 # @st.cache(allow_output_mutation=True)
 def load_data():
+    if not tables_exist():
+        response = requests.get(SCRAPER_URL)
+        if response.status_code == 200:
+            st.success("Données récupérées depuis le site")
+        else:
+            st.error("Erreur lors de la récupération des données depuis le site")
+            
     st.session_state.df = prep_data()
     st.session_state.initialized = True  # Set initialized flag to True
 
@@ -119,7 +138,7 @@ def main():
     #     except Exception as e:
     #         st.error("Erreur lors de l'effacement : " + str(e))
     
-    SCRAPER_URL = "http://scraper:5001/scrape"
+    
     if st.button("Charger les dernières données depuis le site"):
         response = requests.get(SCRAPER_URL)
         if response.status_code == 200:

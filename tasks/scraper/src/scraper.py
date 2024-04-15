@@ -1,18 +1,9 @@
 import os
 from flask import Flask, jsonify
-from sqlalchemy import create_engine, MetaData
+from sqlalchemy import create_engine
 from .utils.utils import get_csv_file
 
-def tables_exist():
-    engine = create_engine(os.environ['DATABASE_URL'])
-    # Create a MetaData object
-    metadata = MetaData()
 
-    # Reflect the tables in the database
-    metadata.reflect(bind=engine)
-
-    # Check if the 'zones' table exists in the database
-    return 'zones' in metadata.tables and 'arretes' in metadata.tables
 
 
 app = Flask(__name__)
@@ -40,10 +31,10 @@ def scrape_data():
         # If an exception occurs during scraping, return an error message
         return jsonify({"error": "An error occurred during scraping: " + str(e)}), 500
 
-if __name__ == '__main__':
-    # scrape data if tables have not been created
-    if not tables_exist():
-        print("tables doesn't exist")
-        scrape_data()
-    else:
-        print("tables exist")
+# if __name__ == '__main__':
+#     # scrape data if tables have not been created
+#     if not tables_exist():
+#         print("tables doesn't exist")
+#         scrape_data()
+#     else:
+#         print("tables exist")
