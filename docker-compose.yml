@@ -1,10 +1,11 @@
-version: '3.8'
-
 services:
   scraper:
     build:
       context: .
       dockerfile: tasks/scraper/Dockerfile
+    ports:
+      - "5001:5001"
+    command: gunicorn -w 1 -b 0.0.0.0:5001 src.scraper:app
     depends_on:
       - db
     environment:
@@ -28,6 +29,7 @@ services:
       - "8501:8501"
     depends_on:
       - db
+      - scraper
     environment:
       - DATABASE_URL=postgresql://user:password@db:5432/database
 

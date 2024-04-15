@@ -1,29 +1,36 @@
 import os
+import subprocess
+from flask import Flask, jsonify
 from sqlalchemy import create_engine
-from utils.utils import get_csv_file
+from .utils.utils import get_csv_file
 
-# Download file from URL
-URL_ZONES = 'https://www.data.gouv.fr/fr/datasets/r/ac45ed59-7f4b-453a-9b3d-3124af470056'
-df_zones = get_csv_file(URL_ZONES)
+app = Flask(__name__)
 
-URL_ARRETES = 'https://www.data.gouv.fr/fr/datasets/r/782aac32-29c8-4b66-b231-ab4c3005f574'
-df_arretes = get_csv_file(URL_ARRETES)
+@app.route('/scrape', methods=['GET'])
+def scrape_data():
+    try:
+        # Download file from URL
+        URL_ZONES = 'https://www.data.gouv.fr/fr/datasets/r/ac45ed59-7f4b-453a-9b3d-3124af470056'
+        df_zones = get_csv_file(URL_ZONES)
 
-# Connect to PostgreSQL
-engine = create_engine(os.environ['DATABASE_URL'])
+        URL_ARRETES = 'https://www.data.gouv.fr/fr/datasets/r/782aac32-29c8-4b66-b231-ab4c3005f574'
+        df_arretes = get_csv_file(URL_ARRETES)
 
-# Create tables if not exists
-df_zones.to_sql('zones', con=engine, if_exists='replace', index=False)
-df_arretes.to_sql('arretes', con=engine, if_exists='replace', index=False)
+        # Connect to PostgreSQL
+        engine = create_engine(os.environ['DATABASE_URL'])
 
-import seaborn as sns
-import matplotlib.pyplot as plt
+        # Create tables if not exists
+        df_zones.to_sql('zones', con=engine, if_exists='replace', index=False)
+        df_arretes.to_sql('arretes', con=engine, if_exists='replace', index=False)
 
-# Generate some example data
-data = sns.load_dataset("iris")
+        return jsonify({"success": "Data scraped and stored in database with success"}), 200
+    
+    except Exception as e:
+        # If an exception occurs during scraping, return an error message
+        return jsonify({"error": "An error occurred during scraping: " + str(e)}), 500
 
-# Create a Seaborn chart
-sns.pairplot(data, hue="species")
-
-# Show the chart
-plt.show()
+# if __name__ == '__main__':
+#     # Run the Flask app
+#     # app.run(host='0.0.0.0', port=5001, debug=True)
+#     cmd = 'gunicorn -w 1 -b 0.0.0.0:5001 scraper:app'
+#     subprocess.run(cmd, shell=True)
