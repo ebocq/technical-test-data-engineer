@@ -2,6 +2,7 @@ import os
 import requests
 import streamlit as st
 import pandas as pd
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sqlalchemy import create_engine, text, MetaData
@@ -15,8 +16,13 @@ def fetch_data(table_name):
     
     # Query data from the table
     df = pd.read_sql_table(table_name, engine)
-    
+
     return df
+
+def get_departements(url):
+    response = requests.get(url)
+    geojson_data = response.json()
+    return gpd.GeoDataFrame.from_features(geojson_data.get('features'))
 
 def delete_table(table_name):
     sql_query = text(f"""DELETE FROM {table_name}""")
@@ -69,6 +75,11 @@ def load_data():
             
     st.session_state.df = prep_data()
     st.session_state.initialized = True  # Set initialized flag to True
+    
+    # get departments
+    URL_DEPARTEMENTS = 'https://www.data.gouv.fr/fr/datasets/r/90b9341a-e1f7-4d75-a73c-bbc010c7feeb'
+    st.session_state.gdf_departements = get_departements(URL_DEPARTEMENTS)
+        
     st.write("Initialisation terminée")
 
 def df_at_date(df, date_to_consider):
@@ -81,7 +92,7 @@ def plot_nb_dep_per_alert(df, date_to_consider, cmap, norm):
     df_nb_dep_per_alert = df_max_alert_per_dep.groupby(by=['numero_niveau', 'nom_niveau']).agg({'code_departement': 'count'}).rename(columns={'code_departement': 'nb_departements'}).reset_index()
     df_sorted = df_nb_dep_per_alert.sort_values('numero_niveau', ascending=False)
 
-    st.title(f"1.   &Nombre de départements par niveau d'alerte au {date_to_consider}")
+    st.title(f"1. Nombre de départements par niveau d'alerte au {date_to_consider}")
     fig, ax = plt.subplots()
     df_sorted.plot(kind='bar', x='nom_niveau', y='nb_departements', color=cmap(norm(df_sorted['numero_niveau'])), legend=False, ax=ax)
 
@@ -148,6 +159,10 @@ def main():
 
     if 'initialized' not in st.session_state or not st.session_state.initialized:
         load_data()
+        
+    fig, ax = plt.subplots()
+    st.session_state.gdf_departements.plot(ax=ax)
+    st.pyplot(fig)
     
     # delete_button = st.button("Effacer les données")
     # if delete_button:
@@ -167,6 +182,7 @@ def main():
             st.success("Données mises à jour")
         else:
             st.error("Erreur lors de la mise à jour")
+            st.write(response.json().get("error"))
 
     
     # Define the date range

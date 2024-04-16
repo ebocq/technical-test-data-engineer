@@ -1,5 +1,5 @@
-import pandas as pd
 import requests
+import pandas as pd
 from io import StringIO
 
 def get_csv_file(url):
