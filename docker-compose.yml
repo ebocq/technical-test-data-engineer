@@ -9,15 +9,15 @@ services:
     depends_on:
       - db
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/database
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/${POSTGRES_DB}
 
   db:
     image: postgres:16.2
     restart: always
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: database
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - data:/var/lib/postgresql/data
 
@@ -31,20 +31,7 @@ services:
       - db
       - scraper
     environment:
-      - DATABASE_URL=postgresql://user:password@db:5432/database
-
-  # notebook:
-  #   image: jupyter/scipy-notebook
-  #   ports:
-  #     - "8888:8888"
-  #   volumes:
-  #     - data:/notebook
-  #   depends_on:
-  #     - db
-  #   environment:
-  #     - JUPYTER_TOKEN=mysecretpassword
-  #     - DATABASE_URL=postgresql://user:password@db:5432/database
-
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/${POSTGRES_DB}
 
 volumes:
   data:
