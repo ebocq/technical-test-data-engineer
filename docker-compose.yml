@@ -1,0 +1,37 @@
+services:
+  scraper:
+    build:
+      context: .
+      dockerfile: tasks/scraper/Dockerfile
+    ports:
+      - "5001:5001"
+    command: gunicorn -w 1 -b 0.0.0.0:5001 src.scraper:app
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/${POSTGRES_DB}
+
+  db:
+    image: postgres:16.2
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - data:/var/lib/postgresql/data
+
+  visualization:
+    build:
+      context: .
+      dockerfile: tasks/visualization/Dockerfile
+    ports:
+      - "8501:8501"
+    depends_on:
+      - db
+      - scraper
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${DB_PORT}/${POSTGRES_DB}
+
+volumes:
+  data:
