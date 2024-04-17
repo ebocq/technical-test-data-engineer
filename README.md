@@ -13,7 +13,7 @@
 4. Execute
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 5. Search the url http://localhost:8501/ in your browser
